@@ -13,6 +13,7 @@ export interface Requirement {
   priority: RequirementPriority;
   status: RequirementStatus;
   tags: string[];
+  projectId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +58,7 @@ export interface NewRequirement {
   description: string;
   type: RequirementType;
   priority: RequirementPriority;
+  projectId?: string;
   tags?: string[];
 }
 

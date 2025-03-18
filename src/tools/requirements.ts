@@ -5,6 +5,7 @@ import {
   createRequirement,
   deleteProject,
   deleteRequirement,
+  getRequirementsByProject,
   updateProject,
   updateRequirement,
 } from "../lib/storage.js";
@@ -36,15 +37,17 @@ export function registerRequirementsTools(server: McpServer) {
         RequirementPriority.HIGH,
         RequirementPriority.CRITICAL,
       ]),
+      projectId: z.string().uuid().optional(),
       tags: z.array(z.string()).optional(),
     },
-    async ({ title, description, type, priority, tags }) => {
+    async ({ title, description, type, priority, projectId, tags }) => {
       try {
         const requirement = await createRequirement({
           title,
           description,
           type,
           priority,
+          projectId,
           tags,
         });
 
@@ -103,6 +106,7 @@ export function registerRequirementsTools(server: McpServer) {
           RequirementStatus.VERIFIED,
         ])
         .optional(),
+      projectId: z.string().uuid().optional(),
       tags: z.array(z.string()).optional(),
     },
     async (params) => {
@@ -377,6 +381,7 @@ export function registerRequirementsTools(server: McpServer) {
           description,
           type,
           priority: RequirementPriority.MEDIUM,
+          projectId,
           tags,
         });
 
@@ -394,6 +399,38 @@ export function registerRequirementsTools(server: McpServer) {
             {
               type: "text",
               text: `Error generating requirement: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Get requirements by project
+  server.tool(
+    "list-project-requirements",
+    {
+      projectId: z.string().uuid(),
+    },
+    async ({ projectId }) => {
+      try {
+        const requirements = await getRequirementsByProject(projectId);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(requirements, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error listing project requirements: ${error}`,
             },
           ],
           isError: true,

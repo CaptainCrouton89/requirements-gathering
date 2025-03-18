@@ -10,14 +10,19 @@ import {
 } from "./types.js";
 
 // Storage paths
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
-const REQUIREMENTS_FILE = path.join(DATA_DIR, "requirements.json");
-const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
+const REQUIREMENTS_FILE = path.join(
+  "/Users/silasrhyneer/AI/requirements",
+  "requirements.json"
+);
+const PROJECTS_FILE = path.join(
+  "/Users/silasrhyneer/AI/requirements",
+  "projects.json"
+);
 
 // Ensure data directory exists
 async function ensureDataDir() {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.mkdir("/Users/silasrhyneer/AI/requirements", { recursive: true });
   } catch (error) {
     console.error("Error creating data directory:", error);
     throw error;
@@ -209,6 +214,14 @@ async function deleteProject(id: string): Promise<boolean> {
   return true;
 }
 
+// Get requirements for a specific project
+async function getRequirementsByProject(
+  projectId: string
+): Promise<Requirement[]> {
+  const requirements = await getRequirements();
+  return requirements.filter((req) => req.projectId === projectId);
+}
+
 // Initialize storage on module import
 (async () => {
   try {
@@ -226,6 +239,7 @@ export {
   deleteRequirement,
   getProjects,
   getRequirements,
+  getRequirementsByProject,
   updateProject,
   updateRequirement,
 };

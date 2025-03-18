@@ -172,6 +172,40 @@ export function registerRequirementsResources(server: McpServer) {
     }
   );
 
+  // Get requirements filtered by project ID
+  server.resource(
+    "requirements-by-project",
+    new ResourceTemplate("requirements://project/{projectId}", {
+      list: undefined,
+    }),
+    async (uri, { projectId }) => {
+      try {
+        const requirements = await getRequirements();
+        const filteredRequirements = requirements.filter(
+          (req) => req.projectId === projectId
+        );
+
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              text: JSON.stringify(filteredRequirements, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              text: `Error fetching requirements by project: ${error}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
   // Get requirements filtered by tag
   server.resource(
     "requirements-by-tag",
