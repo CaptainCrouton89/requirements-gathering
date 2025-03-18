@@ -1,142 +1,89 @@
-# Requirements Gatherer
+# Requirements Gathering MCP
 
-A TypeScript MCP application that helps users gather requirements for their projects through clarifying questions and generates detailed specifications documents.
-
-## Overview
-
-Requirements Gatherer is designed to facilitate the requirements gathering process by:
-
-1. Collecting basic project information
-2. Asking intelligent clarifying questions based on the project context
-3. Categorizing requirements into functional, non-functional, constraints, and assumptions
-4. Generating comprehensive specifications documents in different formats
+A Multi-Agent Conversational Process (MCP) server for gathering and managing project requirements. This MCP server provides tools for creating, updating, and tracking requirements, stakeholders, and projects.
 
 ## Features
 
-- **Structured Requirements Collection**: Systematically gather project information following best practices
-- **Intelligent Questioning**: Ask relevant questions based on project type and context
-- **Progressive Refinement**: Move through stages of requirements gathering from initial to detailed
-- **Automatic Categorization**: Organize requirements into appropriate categories
-- **Flexible Output**: Generate specification documents in Markdown or JSON formats
-- **Customizable Sections**: Choose which sections to include in your specifications document
+- Create, update, and list requirements
+- Track requirement changes and history
+- Manage stakeholders and their associations with requirements
+- Create projects and link them to requirements and stakeholders
+- Persistent storage of all data
 
 ## Installation
 
-Make sure you have Node.js 18 or newer installed.
-
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/requirements-gatherer.git
-cd requirements-gatherer
-
 # Install dependencies
-npm install
-
-# Build the application
-npm run build
-
-# Start the server
-npm start
+pnpm install
 ```
 
 ## Usage
 
-The application exposes a REST API that can be used to gather requirements and generate specifications.
+### Starting the server
 
-### API Endpoints
+```bash
+# Development mode (with auto-restart)
+pnpm dev
 
-#### Start Requirements Gathering
+# Production mode
+pnpm start
 
-```
-POST /api/tools/start-requirements
-
-{
-  "projectName": "My Project",
-  "projectDescription": "A detailed description of the project",
-  "projectType": "web",
-  "projectTypeDetails": "React-based SPA",
-  "targetCompletion": "Q3 2023",
-  "stakeholders": ["Product Manager", "Technical Lead", "UX Designer"]
-}
+# Build TypeScript files (outputs to dist/)
+pnpm build
 ```
 
-#### Get Clarifying Questions
+### Available Tools
 
-```
-POST /api/tools/ask-clarifying-questions/ask
+#### Requirements
 
-{
-  "projectId": "your-project-id",
-  "generateNew": false
-}
-```
+- `requirements/add`: Add a new requirement
 
-#### Answer Clarifying Questions
+  - Parameters: `title`, `description`, `priority`, `category`, `status` (optional)
 
-```
-POST /api/tools/ask-clarifying-questions/answer
+- `requirements/update`: Update an existing requirement
 
-{
-  "projectId": "your-project-id",
-  "answers": {
-    "What browsers and versions need to be supported?": "Chrome, Firefox, Safari latest versions",
-    "Is this a public-facing website or internal application?": "Public-facing"
-  }
-}
-```
+  - Parameters: `id`, `title` (optional), `description` (optional), `priority` (optional), `category` (optional), `status` (optional), `updatedBy`
 
-#### Generate Specification Document
+- `requirements/list`: List requirements (can be filtered)
 
-```
-POST /api/tools/generate-specification
+  - Parameters: `category` (optional), `status` (optional), `priority` (optional)
 
-{
-  "projectId": "your-project-id",
-  "format": "markdown",
-  "includeSections": ["overview", "functionalRequirements", "nonFunctionalRequirements"]
-}
-```
+- `requirements/get`: Get details of a specific requirement
+
+  - Parameters: `id`
+
+- `requirements/history`: View the history of changes to a requirement
+  - Parameters: `id`
+
+#### Stakeholders
+
+- `stakeholders/add`: Add a new stakeholder
+  - Parameters: `name`, `role`, `contactInfo` (optional), `requirements` (optional)
+
+#### Projects
+
+- `projects/add`: Add a new project
+  - Parameters: `name`, `description`, `startDate`, `endDate` (optional), `status` (optional), `requirements` (optional), `stakeholders` (optional)
+
+### Data Storage
+
+All data is stored in JSON format in the `./data/requirements.json` file.
+
+## Project Structure
+
+- `src/server.ts`: Main MCP server implementation
+- `src/types.ts`: TypeScript interfaces for requirements, stakeholders, and projects
+- `src/store.ts`: Data storage implementation
+- `src/tools/requirements.ts`: Implementation of requirements-related tools
 
 ## Development
 
-To run the application in development mode with hot reloading:
+This project uses:
 
-```bash
-npm run dev
-```
-
-### Project Structure
-
-```
-requirements-gatherer/
-├── src/                    # Source code
-│   ├── tools/              # API tools
-│   │   ├── start-requirements-tool.ts
-│   │   ├── ask-clarifying-questions-tool.ts
-│   │   └── generate-specification-tool.ts
-│   ├── prompts/            # AI prompts
-│   │   ├── requirements-system-prompt.ts
-│   │   ├── clarifying-questions-prompt.ts
-│   │   └── specification-generator-prompt.ts
-│   ├── resources/          # API resources
-│   ├── server.ts           # Express server configuration
-│   └── index.ts            # Entry point
-├── data/                   # Requirements data storage (created on first run)
-├── dist/                   # Compiled JavaScript (generated on build)
-├── package.json            # Project dependencies and scripts
-└── tsconfig.json           # TypeScript configuration
-```
-
-## Extending the Application
-
-### Adding New Question Types
-
-To add new question types based on project categories, modify the `generateClarifyingQuestions` function in `src/tools/ask-clarifying-questions-tool.ts`.
-
-### Adding New Specification Formats
-
-To add new output formats, update the `generateSpecificationDocument` function in `src/tools/generate-specification-tool.ts`.
+- TypeScript for type safety
+- Zod for schema validation
+- MCP SDK for server implementation
 
 ## License
 
-MIT
+ISC

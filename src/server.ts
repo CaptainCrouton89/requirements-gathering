@@ -1,135 +1,339 @@
-/**
- * Express server configuration for requirements-gatherer
- */
-import cors from "cors";
-import express, {
-  Application,
-  NextFunction,
-  Request,
-  Response,
-  Router,
-} from "express";
-import * as fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import { FileRequirementsStore } from "./store";
 
-// Setup for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Initialize the requirements store
+const store = new FileRequirementsStore();
 
-// Import tools routes
-import askClarifyingQuestionsTool from "./tools/ask-clarifying-questions-tool.js";
-import exampleTool from "./tools/example-tool.js";
-import generateSpecificationTool from "./tools/generate-specification-tool.js";
-import startRequirementsTool from "./tools/start-requirements-tool.js";
+// Ensure data is loaded before tools are used
+let isInitialized = false;
+const initializeStore = async () => {
+  if (!isInitialized) {
+    await store.load();
+    isInitialized = true;
+  }
+};
 
-// Import resource routes
-import exampleResource from "./resources/example-resource.js";
-
-// Create Express application
-const app: Application = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// API Routes
-const apiRouter: Router = Router();
-app.use("/api", apiRouter);
-
-// Register tool routes
-apiRouter.use("/tools/start-requirements", startRequirementsTool);
-apiRouter.use("/tools/ask-clarifying-questions", askClarifyingQuestionsTool);
-apiRouter.use("/tools/generate-specification", generateSpecificationTool);
-apiRouter.use("/tools/example", exampleTool);
-
-// Register resource routes
-apiRouter.use("/resources/example", exampleResource);
-
-// Health check endpoint
-apiRouter.get("/health", (req: Request, res: Response) => {
-  res.status(200).json({ status: "ok" });
+// Create an MCP server for requirements gathering
+const server = new McpServer({
+  name: "Requirements Gathering",
+  version: "1.0.0",
+  description: "An MCP server for gathering and managing project requirements.",
 });
 
-// Documentation endpoint
-apiRouter.get("/", (req: Request, res: Response) => {
-  res.status(200).json({
-    name: "Requirements Gatherer API",
-    description: "API for gathering requirements and generating specifications",
-    version: "1.0.0",
-    tools: [
-      {
-        name: "start-requirements",
-        description: "Start a new requirements gathering process",
-        endpoint: "/api/tools/start-requirements",
-      },
-      {
-        name: "ask-clarifying-questions",
-        description: "Get or generate clarifying questions",
-        endpoints: [
-          "/api/tools/ask-clarifying-questions/ask",
-          "/api/tools/ask-clarifying-questions/answer",
+// Define and register all our tools manually
+
+// Tool: Add requirement
+server.tool(
+  "requirements/add",
+  {
+    title: z.string(),
+    description: z.string(),
+    priority: z.enum(["low", "medium", "high", "critical"]),
+    category: z.string(),
+    status: z
+      .enum(["proposed", "approved", "rejected", "implemented"])
+      .optional(),
+  },
+  async (params) => {
+    await initializeStore();
+
+    const requirement = store.addRequirement({
+      title: params.title,
+      description: params.description,
+      priority: params.priority,
+      category: params.category,
+      status: params.status || "proposed",
+    });
+
+    await store.save();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Requirement created successfully with ID: ${requirement.id}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: Update requirement
+server.tool(
+  "requirements/update",
+  {
+    id: z.string(),
+    title: z.string().optional(),
+    description: z.string().optional(),
+    priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+    category: z.string().optional(),
+    status: z
+      .enum(["proposed", "approved", "rejected", "implemented"])
+      .optional(),
+    updatedBy: z.string(),
+  },
+  async (params) => {
+    await initializeStore();
+
+    const { id, updatedBy, ...updates } = params;
+
+    try {
+      const requirement = store.updateRequirement(id, updates, updatedBy);
+      await store.save();
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Requirement ${id} updated successfully`,
+          },
         ],
-      },
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: ${(error as Error).message}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+// Tool: List requirements
+server.tool(
+  "requirements/list",
+  {
+    category: z.string().optional(),
+    status: z
+      .enum(["proposed", "approved", "rejected", "implemented"])
+      .optional(),
+    priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  },
+  async (params) => {
+    await initializeStore();
+
+    let requirements = Object.values(store.requirements);
+
+    // Apply filters if provided
+    if (params.category) {
+      requirements = requirements.filter(
+        (req) => req.category === params.category
+      );
+    }
+
+    if (params.status) {
+      requirements = requirements.filter((req) => req.status === params.status);
+    }
+
+    if (params.priority) {
+      requirements = requirements.filter(
+        (req) => req.priority === params.priority
+      );
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(requirements, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+// Tool: Get requirement by ID
+server.tool(
+  "requirements/get",
+  {
+    id: z.string(),
+  },
+  async (params) => {
+    await initializeStore();
+
+    const requirement = store.requirements[params.id];
+
+    if (!requirement) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: Requirement with ID ${params.id} not found`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(requirement, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+// Tool: Get requirement history
+server.tool(
+  "requirements/history",
+  {
+    id: z.string(),
+  },
+  async (params) => {
+    await initializeStore();
+
+    const updates = store.updates.filter(
+      (update) => update.requirementId === params.id
+    );
+
+    if (updates.length === 0) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `No history found for requirement with ID ${params.id}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(updates, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+// Tool: Add stakeholder
+server.tool(
+  "stakeholders/add",
+  {
+    name: z.string(),
+    role: z.string(),
+    contactInfo: z.string().optional(),
+    requirements: z.array(z.string()).optional(),
+  },
+  async (params) => {
+    await initializeStore();
+
+    const stakeholder = store.addStakeholder({
+      name: params.name,
+      role: params.role,
+      contactInfo: params.contactInfo,
+      requirements: params.requirements || [],
+    });
+
+    await store.save();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Stakeholder created successfully with ID: ${stakeholder.id}`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool: Add project
+server.tool(
+  "projects/add",
+  {
+    name: z.string(),
+    description: z.string(),
+    startDate: z.string(),
+    endDate: z.string().optional(),
+    status: z
+      .enum(["planning", "in-progress", "completed", "on-hold"])
+      .optional(),
+    requirements: z.array(z.string()).optional(),
+    stakeholders: z.array(z.string()).optional(),
+  },
+  async (params) => {
+    await initializeStore();
+
+    const project = store.addProject({
+      name: params.name,
+      description: params.description,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      status: params.status || "planning",
+      requirements: params.requirements || [],
+      stakeholders: params.stakeholders || [],
+    });
+
+    await store.save();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Project created successfully with ID: ${project.id}`,
+        },
+      ],
+    };
+  }
+);
+
+// Add a welcome prompt that guides users on how to use the requirements gathering tools
+server.prompt("welcome", {}, (args, extra) => {
+  return {
+    messages: [
       {
-        name: "generate-specification",
-        description: "Generate a specifications document",
-        endpoint: "/api/tools/generate-specification",
-      },
-      {
-        name: "example",
-        description: "Example tool for demonstration purposes",
-        endpoint: "/api/tools/example",
+        role: "assistant",
+        content: {
+          type: "text",
+          text: `# Requirements Gathering Assistant
+
+This agent helps you gather, organize, and manage project requirements.
+
+## Available Tools:
+
+### Requirements
+- \`requirements/add\`: Add a new requirement
+- \`requirements/update\`: Update an existing requirement
+- \`requirements/list\`: List requirements (can be filtered)
+- \`requirements/get\`: Get details of a specific requirement
+- \`requirements/history\`: View the history of changes to a requirement
+
+### Stakeholders
+- \`stakeholders/add\`: Add a new stakeholder
+
+### Projects
+- \`projects/add\`: Add a new project
+
+## Example Usage:
+Try adding a new requirement with: \`requirements/add\`
+`,
+        },
       },
     ],
-    resources: [
-      {
-        name: "example",
-        description: "Example resource for demonstration purposes",
-        endpoint: "/api/resources/example",
-      },
-    ],
-  });
+  };
 });
 
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({
-    error: "Internal Server Error",
-    message: process.env.NODE_ENV === "production" ? undefined : err.message,
-  });
-});
-
-// Ensure data directory exists
-const dataDir = path.join(__dirname, "../data");
-
-/**
- * Initialize the data directory
- */
-async function initializeDataDirectory(): Promise<void> {
+// Start the server
+async function startServer() {
   try {
-    await fs.mkdir(dataDir, { recursive: true });
-    console.log(`Data directory created at: ${dataDir}`);
+    // Use the stdio transport for command-line interaction
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.log("Requirements Gathering MCP server started");
   } catch (error) {
-    console.error("Error creating data directory:", error);
+    console.error("Failed to start server:", error);
+    process.exit(1);
   }
 }
 
-/**
- * Start the Express server
- */
-export async function startServer(port: number): Promise<void> {
-  // Initialize the data directory before starting the server
-  await initializeDataDirectory();
-
-  return new Promise((resolve) => {
-    app.listen(port, () => {
-      console.log(`Requirements Gatherer server started on port ${port}`);
-      resolve();
-    });
-  });
-}
-
-export default app;
+startServer().catch(console.error);
