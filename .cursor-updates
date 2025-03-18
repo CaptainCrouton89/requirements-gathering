@@ -1,0 +1,8 @@
+# Cursor Updates
+
+- Fixed server.ts structure and format to work properly with ES modules
+- Added documentation endpoint with comprehensive API details
+- Implemented data directory initialization logic for server startup
+- Fixed package.json format
+- Added resources to the API documentation endpoint
+- Added proper TypeScript type annotations to improve build compatibility
