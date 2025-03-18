@@ -1,3 +1,4 @@
 # MCP Requirements Gathering Project Updates
 
-- Created a TypeScript-based MCP server for requirements gathering with tools for managing requirements, stakeholders, and projects. 
+- Created a TypeScript-based MCP server for requirements gathering with tools for managing requirements, stakeholders, and projects.
+- Fixed TypeScript linter errors by adding explicit file extensions for ESM imports and resolving type issues in the codebase. 

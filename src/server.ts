@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { FileRequirementsStore } from "./store";
+import { FileRequirementsStore } from "./store.js";
+import type { Requirement, RequirementUpdate } from "./types.js";
 
 // Initialize the requirements store
 const store = new FileRequirementsStore();
@@ -122,17 +123,19 @@ server.tool(
     // Apply filters if provided
     if (params.category) {
       requirements = requirements.filter(
-        (req) => req.category === params.category
+        (req: Requirement) => req.category === params.category
       );
     }
 
     if (params.status) {
-      requirements = requirements.filter((req) => req.status === params.status);
+      requirements = requirements.filter(
+        (req: Requirement) => req.status === params.status
+      );
     }
 
     if (params.priority) {
       requirements = requirements.filter(
-        (req) => req.priority === params.priority
+        (req: Requirement) => req.priority === params.priority
       );
     }
 
@@ -190,7 +193,7 @@ server.tool(
     await initializeStore();
 
     const updates = store.updates.filter(
-      (update) => update.requirementId === params.id
+      (update: RequirementUpdate) => update.requirementId === params.id
     );
 
     if (updates.length === 0) {

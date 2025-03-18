@@ -3,10 +3,18 @@ export interface Requirement {
   title: string;
   description: string;
   priority: "low" | "medium" | "high" | "critical";
-  status: "proposed" | "approved" | "rejected" | "implemented";
   category: string;
+  status: "proposed" | "approved" | "rejected" | "implemented";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RequirementUpdate {
+  id: string;
+  requirementId: string;
+  updatedBy: string;
+  updatedFields: Partial<Requirement>;
+  timestamp: string;
 }
 
 export interface Stakeholder {
@@ -14,7 +22,8 @@ export interface Stakeholder {
   name: string;
   role: string;
   contactInfo?: string;
-  requirements: string[]; // Requirement IDs this stakeholder is associated with
+  requirements: string[];
+  createdAt: string;
 }
 
 export interface Project {
@@ -24,17 +33,10 @@ export interface Project {
   startDate: string;
   endDate?: string;
   status: "planning" | "in-progress" | "completed" | "on-hold";
-  requirements: string[]; // Requirement IDs associated with this project
-  stakeholders: string[]; // Stakeholder IDs associated with this project
-}
-
-export interface RequirementUpdate {
-  requirementId: string;
-  field: string;
-  oldValue: string;
-  newValue: string;
-  timestamp: string;
-  updatedBy: string;
+  requirements: string[];
+  stakeholders: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RequirementsStore {

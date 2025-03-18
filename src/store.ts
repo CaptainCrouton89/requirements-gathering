@@ -1,140 +1,137 @@
 import fs from "fs/promises";
 import path from "path";
-import {
+import { v4 as uuidv4 } from "uuid";
+import type {
   Project,
   Requirement,
   RequirementUpdate,
-  RequirementsStore,
   Stakeholder,
-} from "./types";
+} from "./types.js";
 
-export class FileRequirementsStore implements RequirementsStore {
+const DATA_DIR = "./data";
+const DATA_FILE = path.join(DATA_DIR, "requirements.json");
+
+// Ensure data directory exists
+async function ensureDataDir() {
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  } catch (error) {
+    console.error("Failed to create data directory:", error);
+  }
+}
+
+export class FileRequirementsStore {
   requirements: Record<string, Requirement> = {};
   stakeholders: Record<string, Stakeholder> = {};
   projects: Record<string, Project> = {};
   updates: RequirementUpdate[] = [];
 
-  private filePath: string;
+  async load() {
+    await ensureDataDir();
 
-  constructor(filePath: string = "./data/requirements.json") {
-    this.filePath = filePath;
+    try {
+      const data = await fs.readFile(DATA_FILE, "utf8");
+      const parsedData = JSON.parse(data);
+
+      this.requirements = parsedData.requirements || {};
+      this.stakeholders = parsedData.stakeholders || {};
+      this.projects = parsedData.projects || {};
+      this.updates = parsedData.updates || [];
+    } catch (error) {
+      // If file doesn't exist or is invalid JSON, use defaults
+      console.log("No existing data found, initializing with empty store");
+      this.requirements = {};
+      this.stakeholders = {};
+      this.projects = {};
+      this.updates = [];
+    }
   }
 
-  async save(): Promise<void> {
-    try {
-      const dirPath = path.dirname(this.filePath);
-      await fs.mkdir(dirPath, { recursive: true });
+  async save() {
+    await ensureDataDir();
 
-      const data = {
+    const data = JSON.stringify(
+      {
         requirements: this.requirements,
         stakeholders: this.stakeholders,
         projects: this.projects,
         updates: this.updates,
-      };
+      },
+      null,
+      2
+    );
 
-      await fs.writeFile(this.filePath, JSON.stringify(data, null, 2), "utf-8");
-    } catch (error) {
-      console.error("Failed to save requirements data:", error);
-      throw error;
-    }
+    await fs.writeFile(DATA_FILE, data, "utf8");
   }
 
-  async load(): Promise<void> {
-    try {
-      const data = await fs.readFile(this.filePath, "utf-8");
-      const parsed = JSON.parse(data);
-
-      this.requirements = parsed.requirements || {};
-      this.stakeholders = parsed.stakeholders || {};
-      this.projects = parsed.projects || {};
-      this.updates = parsed.updates || [];
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        // File doesn't exist yet, initialize with empty data
-        await this.save();
-      } else {
-        console.error("Failed to load requirements data:", error);
-        throw error;
-      }
-    }
-  }
-
-  // Helper methods for working with requirements
-  addRequirement(
-    requirement: Omit<Requirement, "id" | "createdAt" | "updatedAt">
-  ): Requirement {
-    const id = Date.now().toString();
-    const now = new Date().toISOString();
-
-    const newRequirement: Requirement = {
-      id,
-      ...requirement,
-      createdAt: now,
-      updatedAt: now,
+  addRequirement(data: Omit<Requirement, "id" | "createdAt" | "updatedAt">) {
+    const timestamp = new Date().toISOString();
+    const requirement: Requirement = {
+      id: uuidv4(),
+      ...data,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
-    this.requirements[id] = newRequirement;
-    return newRequirement;
+    this.requirements[requirement.id] = requirement;
+    return requirement;
   }
 
   updateRequirement(
     id: string,
     updates: Partial<Requirement>,
     updatedBy: string
-  ): Requirement {
+  ) {
     const requirement = this.requirements[id];
+
     if (!requirement) {
       throw new Error(`Requirement with ID ${id} not found`);
     }
 
-    const now = new Date().toISOString();
+    const timestamp = new Date().toISOString();
+    const update: RequirementUpdate = {
+      id: uuidv4(),
+      requirementId: id,
+      updatedBy,
+      updatedFields: updates,
+      timestamp,
+    };
 
-    // Record updates for tracking changes
-    Object.entries(updates).forEach(([field, newValue]) => {
-      const oldValue = String(requirement[field as keyof Requirement] || "");
-      this.updates.push({
-        requirementId: id,
-        field,
-        oldValue,
-        newValue: String(newValue),
-        timestamp: now,
-        updatedBy,
-      });
-    });
-
+    // Update the requirement
     const updatedRequirement = {
       ...requirement,
       ...updates,
-      updatedAt: now,
+      updatedAt: timestamp,
     };
 
     this.requirements[id] = updatedRequirement;
+    this.updates.push(update);
+
     return updatedRequirement;
   }
 
-  // Stakeholder management methods
-  addStakeholder(stakeholder: Omit<Stakeholder, "id">): Stakeholder {
-    const id = Date.now().toString();
-
-    const newStakeholder: Stakeholder = {
-      id,
-      ...stakeholder,
+  addStakeholder(data: Omit<Stakeholder, "id" | "createdAt">) {
+    const timestamp = new Date().toISOString();
+    const stakeholder: Stakeholder = {
+      id: uuidv4(),
+      ...data,
+      createdAt: timestamp,
     };
 
-    this.stakeholders[id] = newStakeholder;
-    return newStakeholder;
+    this.stakeholders[stakeholder.id] = stakeholder;
+    return stakeholder;
   }
 
-  // Project management methods
-  addProject(project: Omit<Project, "id">): Project {
-    const id = Date.now().toString();
-
-    const newProject: Project = {
-      id,
-      ...project,
+  addProject(data: Omit<Project, "id" | "createdAt" | "updatedAt">) {
+    const timestamp = new Date().toISOString();
+    const project: Project = {
+      id: uuidv4(),
+      ...data,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
-    this.projects[id] = newProject;
-    return newProject;
+    this.projects[project.id] = project;
+    return project;
   }
 }
