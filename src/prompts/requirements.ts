@@ -250,4 +250,137 @@ Please be specific and reference details from both requirements in your analysis
       ],
     })
   );
+
+  // Prompt for guiding the requirements discovery process with follow-up questions
+  server.prompt(
+    "guided-discovery-followup",
+    {
+      stage: z.string(),
+      domain: z.string(),
+      currentResponse: z.string(),
+      previousResponses: z.string().optional(),
+    },
+    ({
+      stage,
+      domain,
+      currentResponse,
+      previousResponses,
+    }: {
+      stage: string;
+      domain: string;
+      currentResponse: string;
+      previousResponses?: string;
+    }) => {
+      // Parse previous responses if they exist
+      let parsedPreviousResponses = {};
+      if (previousResponses) {
+        try {
+          parsedPreviousResponses = JSON.parse(previousResponses);
+        } catch (e) {
+          // If parsing fails, use empty object
+          parsedPreviousResponses = {};
+        }
+      }
+
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `
+You are a requirements engineering expert guiding a discovery session for a ${domain} project. 
+The current stage of the discovery process is: ${stage}
+
+The user has just provided the following response:
+"""
+${currentResponse}
+"""
+
+Previous responses from earlier stages:
+"""
+${JSON.stringify(parsedPreviousResponses, null, 2)}
+"""
+
+Based on this information:
+1. Identify any gaps, ambiguities, or areas that need more clarification in the current response
+2. Generate 2-3 targeted follow-up questions to deepen the requirements discovery
+3. Suggest any aspects of ${domain} that the user might have overlooked
+4. Provide a brief summary of what you've learned from their response
+
+Keep your tone conversational, focus on uncovering detailed, specific requirements, and help the user think more deeply about their needs.
+`,
+            },
+          },
+        ],
+      };
+    }
+  );
+
+  // Prompt for generating requirements from discovery responses
+  server.prompt(
+    "generate-requirements-from-discovery",
+    {
+      discoveryResponses: z.string(),
+      domain: z.string(),
+    },
+    ({
+      discoveryResponses,
+      domain,
+    }: {
+      discoveryResponses: string;
+      domain: string;
+    }) => {
+      // Parse discovery responses
+      let parsedResponses = {};
+      try {
+        parsedResponses = JSON.parse(discoveryResponses);
+      } catch (e) {
+        // If parsing fails, use empty object
+        parsedResponses = {};
+      }
+
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `
+You are a requirements engineering expert tasked with generating formal requirements from a discovery session for a ${domain} project.
+
+The user has gone through a guided discovery process and provided the following information:
+"""
+${JSON.stringify(parsedResponses, null, 2)}
+"""
+
+Please analyze this information and generate the following types of requirements:
+1. Functional Requirements: What the system must do
+2. Non-Functional Requirements: Performance, security, usability, etc.
+3. Technical Requirements: Specific technical constraints or needs
+4. User Stories: In the format "As a [role], I want [goal] so that [benefit]"
+
+For each requirement, include:
+- A clear, concise title
+- A detailed description that is specific and testable
+- The appropriate type (functional, non-functional, technical, user story)
+- A suggested priority (low, medium, high, critical)
+- Relevant tags
+
+Format the requirements as a valid JSON array of requirement objects.
+Ensure each requirement is:
+- Unambiguous and specific
+- Testable/verifiable
+- Feasible
+- Consistent with other requirements
+- Written in clear language
+
+Aim to generate 5-10 comprehensive requirements that capture the essence of what the user needs.
+`,
+            },
+          },
+        ],
+      };
+    }
+  );
 }

@@ -7,4 +7,7 @@
 - Modified types to associate requirements with projects via projectId
 - Updated tools to accept and use projectId parameter
 - Added new resource for filtering requirements by project ID
-- Added a dedicated function and tool for listing requirements by project 
+- Added a dedicated function and tool for listing requirements by project
+- Implemented a guided conversation flow for requirement discovery with multiple stages
+- Added tools to process discovery responses and generate follow-up questions
+- Created a tool to automatically generate requirements from discovery process responses
