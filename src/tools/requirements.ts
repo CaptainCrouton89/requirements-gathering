@@ -5,6 +5,8 @@ import {
   createRequirement,
   deleteProject,
   deleteRequirement,
+  findProjectsByName,
+  getProjectById,
   getRequirementsByProject,
   updateProject,
   updateRequirement,
@@ -22,6 +24,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Create a new requirement
   server.tool(
     "create-requirement",
+    "This tool is used to create a new requirement for a project.",
     {
       title: z.string().min(3).max(100),
       description: z.string().min(5),
@@ -37,7 +40,7 @@ export function registerRequirementsTools(server: McpServer) {
         RequirementPriority.HIGH,
         RequirementPriority.CRITICAL,
       ]),
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().uuid(),
       tags: z.array(z.string()).optional(),
     },
     async ({ title, description, type, priority, projectId, tags }) => {
@@ -76,6 +79,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Guided requirement discovery tool
   server.tool(
     "guided-requirement-discovery",
+    "This tool is used to guide the user through the process of discovering requirements for a project.",
     {
       projectId: z.string().uuid().optional(),
       domain: z.string().min(3),
@@ -236,6 +240,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Update an existing requirement
   server.tool(
     "update-requirement",
+    "This tool is used to update an existing requirement.",
     {
       id: z.string().uuid(),
       title: z.string().min(3).max(100).optional(),
@@ -266,7 +271,7 @@ export function registerRequirementsTools(server: McpServer) {
           RequirementStatus.VERIFIED,
         ])
         .optional(),
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().uuid(),
       tags: z.array(z.string()).optional(),
     },
     async (params) => {
@@ -311,6 +316,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Delete a requirement
   server.tool(
     "delete-requirement",
+    "This tool is used to delete an existing requirement.",
     {
       id: z.string().uuid(),
     },
@@ -355,6 +361,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Create a new project
   server.tool(
     "create-project",
+    "This tool is used to create a new project. When the user wants to figure out requirements for a new project, this tool should be used first to create the project.",
     {
       name: z.string().min(3).max(100),
       description: z.string().min(5),
@@ -391,6 +398,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Update an existing project
   server.tool(
     "update-project",
+    "This tool is used to update an existing project.",
     {
       id: z.string().uuid(),
       name: z.string().min(3).max(100).optional(),
@@ -438,6 +446,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Delete a project
   server.tool(
     "delete-project",
+    "This tool is used to delete an existing project.",
     {
       id: z.string().uuid(),
     },
@@ -482,6 +491,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Generate requirement from description
   server.tool(
     "generate-requirement",
+    "This tool is used to generate a new requirement from a description.",
     {
       description: z.string().min(10),
       projectId: z.string().uuid().optional(),
@@ -570,6 +580,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Get requirements by project
   server.tool(
     "list-project-requirements",
+    "This tool is used to list all requirements for a project.",
     {
       projectId: z.string().uuid(),
     },
@@ -602,6 +613,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Generate requirements from discovery process
   server.tool(
     "generate-requirements-from-discovery",
+    "This tool is used to generate requirements from a discovery process.",
     {
       discoveryResponses: z.string(),
       projectId: z.string().uuid().optional(),
@@ -675,6 +687,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Process a discovery response and provide follow-up questions
   server.tool(
     "process-discovery-response",
+    "This tool is used to process a requirements discovery response and provide follow-up questions.",
     {
       stage: z.string(),
       domain: z.string().min(3),
@@ -955,4 +968,89 @@ export function registerRequirementsTools(server: McpServer) {
 
     return relevantSentences.join(". ");
   }
+
+  // Find projects by name
+  server.tool(
+    "find-projects",
+    "This tool is used to find projects by name. Returns all projects if no search term is provided.",
+    {
+      searchTerm: z.string().optional(),
+    },
+    async ({ searchTerm = "" }) => {
+      try {
+        const projects = await findProjectsByName(searchTerm);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  count: projects.length,
+                  projects: projects,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error finding projects: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Get a project by ID
+  server.tool(
+    "get-project",
+    "This tool is used to retrieve a project by its ID.",
+    {
+      id: z.string().uuid(),
+    },
+    async ({ id }) => {
+      try {
+        const project = await getProjectById(id);
+
+        if (!project) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Project with ID ${id} not found`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(project, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error getting project: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
 }

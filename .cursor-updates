@@ -11,3 +11,5 @@
 - Implemented a guided conversation flow for requirement discovery with multiple stages
 - Added tools to process discovery responses and generate follow-up questions
 - Created a tool to automatically generate requirements from discovery process responses
+- Added find-projects tool to search for projects by name
+- Created get-project tool to retrieve project details by ID

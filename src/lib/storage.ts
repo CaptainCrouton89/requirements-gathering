@@ -222,6 +222,23 @@ async function getRequirementsByProject(
   return requirements.filter((req) => req.projectId === projectId);
 }
 
+// Find projects by name (case insensitive partial match)
+async function findProjectsByName(searchTerm: string): Promise<Project[]> {
+  const projects = await getProjects();
+  if (!searchTerm) return projects;
+
+  const normalizedSearchTerm = searchTerm.toLowerCase();
+  return projects.filter((project) =>
+    project.name.toLowerCase().includes(normalizedSearchTerm)
+  );
+}
+
+// Get a project by ID
+async function getProjectById(id: string): Promise<Project | null> {
+  const projects = await getProjects();
+  return projects.find((project) => project.id === id) || null;
+}
+
 // Initialize storage on module import
 (async () => {
   try {
@@ -237,6 +254,8 @@ export {
   createRequirement,
   deleteProject,
   deleteRequirement,
+  findProjectsByName,
+  getProjectById,
   getProjects,
   getRequirements,
   getRequirementsByProject,
