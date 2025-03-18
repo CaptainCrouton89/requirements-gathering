@@ -18,7 +18,7 @@ const initializeStore = async () => {
 
 // Create an MCP server for requirements gathering
 const server = new McpServer({
-  name: "Requirements Gathering",
+  name: "requirements-gathering",
   version: "1.0.0",
   description: "An MCP server for gathering and managing project requirements.",
 });

@@ -8,7 +8,7 @@ import type {
   Stakeholder,
 } from "./types.js";
 
-const DATA_DIR = "./data";
+const DATA_DIR = "/Users/silasrhyneer/AI/data";
 const DATA_FILE = path.join(DATA_DIR, "requirements.json");
 
 // Ensure data directory exists
