@@ -6,3 +6,4 @@
 - Fixed package.json format
 - Added resources to the API documentation endpoint
 - Added proper TypeScript type annotations to improve build compatibility
+- Fixed example-tool.ts with proper TypeScript type annotations

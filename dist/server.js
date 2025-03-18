@@ -2,7 +2,7 @@
  * Express server configuration for requirements-gatherer
  */
 import cors from "cors";
-import express, { Router } from "express";
+import express, { Router, } from "express";
 import * as fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
