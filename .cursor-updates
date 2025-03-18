@@ -13,3 +13,4 @@
 - Created a tool to automatically generate requirements from discovery process responses
 - Added find-projects tool to search for projects by name
 - Created get-project tool to retrieve project details by ID
+- Made projectId a required field for requirements instead of optional to ensure all requirements are associated with a parent project

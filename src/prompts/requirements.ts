@@ -259,17 +259,20 @@ Please be specific and reference details from both requirements in your analysis
       domain: z.string(),
       currentResponse: z.string(),
       previousResponses: z.string().optional(),
+      projectId: z.string().uuid(),
     },
     ({
       stage,
       domain,
       currentResponse,
       previousResponses,
+      projectId,
     }: {
       stage: string;
       domain: string;
       currentResponse: string;
       previousResponses?: string;
+      projectId: string;
     }) => {
       // Parse previous responses if they exist
       let parsedPreviousResponses = {};
@@ -289,7 +292,7 @@ Please be specific and reference details from both requirements in your analysis
             content: {
               type: "text",
               text: `
-You are a requirements engineering expert guiding a discovery session for a ${domain} project. 
+You are a requirements engineering expert guiding a discovery session for a ${domain} project (Project ID: ${projectId}). 
 The current stage of the discovery process is: ${stage}
 
 The user has just provided the following response:

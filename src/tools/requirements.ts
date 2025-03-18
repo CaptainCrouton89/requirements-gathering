@@ -81,7 +81,7 @@ export function registerRequirementsTools(server: McpServer) {
     "guided-requirement-discovery",
     "This tool is used to guide the user through the process of discovering requirements for a project.",
     {
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().uuid(),
       domain: z.string().min(3),
       stage: z
         .enum([
@@ -494,7 +494,7 @@ export function registerRequirementsTools(server: McpServer) {
     "This tool is used to generate a new requirement from a description.",
     {
       description: z.string().min(10),
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().uuid(),
     },
     async ({ description, projectId }) => {
       try {
@@ -616,7 +616,7 @@ export function registerRequirementsTools(server: McpServer) {
     "This tool is used to generate requirements from a discovery process.",
     {
       discoveryResponses: z.string(),
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().uuid(),
     },
     async ({ discoveryResponses, projectId }) => {
       try {
@@ -693,7 +693,7 @@ export function registerRequirementsTools(server: McpServer) {
       domain: z.string().min(3),
       response: z.string().min(1),
       previousResponses: z.string().optional(),
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().uuid(),
     },
     async ({ stage, domain, response, previousResponses, projectId }) => {
       try {
@@ -766,6 +766,7 @@ export function registerRequirementsTools(server: McpServer) {
               domain: domain,
               currentResponse: response,
               previousResponses: JSON.stringify(responses),
+              projectId: projectId,
             },
           };
 
