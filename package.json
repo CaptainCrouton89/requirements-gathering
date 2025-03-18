@@ -1,0 +1,21 @@
+{
+  "name": "requirements-gathering",
+  "version": "1.0.0",
+  "description": "An MCP application that helps users gather requirements for their tasks through clarifying questions to build a detailed specifications document.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "requirements",
+    "specifications"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@mcp/server": "latest",
+    "@mcp/storage": "latest"
+  }
+}
