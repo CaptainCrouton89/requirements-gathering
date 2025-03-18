@@ -1,267 +1,404 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { FileRequirementsStore } from "../store.js";
-import type { Requirement, RequirementUpdate } from "../types.js";
+import {
+  createProject,
+  createRequirement,
+  deleteProject,
+  deleteRequirement,
+  updateProject,
+  updateRequirement,
+} from "../lib/storage.js";
+import {
+  RequirementPriority,
+  RequirementStatus,
+  RequirementType,
+} from "../lib/types.js";
 
-// Initialize the requirements store
-const store = new FileRequirementsStore();
+/**
+ * Register all requirements-related tools with the MCP server
+ */
+export function registerRequirementsTools(server: McpServer) {
+  // Create a new requirement
+  server.tool(
+    "create-requirement",
+    {
+      title: z.string().min(3).max(100),
+      description: z.string().min(5),
+      type: z.enum([
+        RequirementType.FUNCTIONAL,
+        RequirementType.NON_FUNCTIONAL,
+        RequirementType.TECHNICAL,
+        RequirementType.USER_STORY,
+      ]),
+      priority: z.enum([
+        RequirementPriority.LOW,
+        RequirementPriority.MEDIUM,
+        RequirementPriority.HIGH,
+        RequirementPriority.CRITICAL,
+      ]),
+      tags: z.array(z.string()).optional(),
+    },
+    async ({ title, description, type, priority, tags }) => {
+      try {
+        const requirement = await createRequirement({
+          title,
+          description,
+          type,
+          priority,
+          tags,
+        });
 
-// Ensure data is loaded before tools are used
-let isInitialized = false;
-const initializeStore = async () => {
-  if (!isInitialized) {
-    await store.load();
-    isInitialized = true;
-  }
-};
-
-// Define the schema for a requirement
-const requirementSchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  priority: z.enum(["low", "medium", "high", "critical"]),
-  category: z.string(),
-  status: z
-    .enum(["proposed", "approved", "rejected", "implemented"])
-    .default("proposed"),
-});
-
-// Define the schema for a stakeholder
-const stakeholderSchema = z.object({
-  name: z.string(),
-  role: z.string(),
-  contactInfo: z.string().optional(),
-  requirements: z.array(z.string()).default([]),
-});
-
-// Define the schema for a project
-const projectSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  startDate: z.string(),
-  endDate: z.string().optional(),
-  status: z
-    .enum(["planning", "in-progress", "completed", "on-hold"])
-    .default("planning"),
-  requirements: z.array(z.string()).default([]),
-  stakeholders: z.array(z.string()).default([]),
-});
-
-// Schema for requirement update
-const updateRequirementSchema = z.object({
-  id: z.string(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
-  category: z.string().optional(),
-  status: z
-    .enum(["proposed", "approved", "rejected", "implemented"])
-    .optional(),
-  updatedBy: z.string(),
-});
-
-// Schema for filtering requirements
-const listRequirementsSchema = z.object({
-  category: z.string().optional(),
-  status: z
-    .enum(["proposed", "approved", "rejected", "implemented"])
-    .optional(),
-  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
-});
-
-// Schema for getting a requirement by ID
-const requirementIdSchema = z.object({
-  id: z.string(),
-});
-
-// MCP tool for adding a new requirement
-export const addRequirementTool = {
-  schema: requirementSchema,
-  handler: async (params: z.infer<typeof requirementSchema>) => {
-    await initializeStore();
-
-    const requirement = store.addRequirement(params);
-    await store.save();
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Requirement created successfully with ID: ${requirement.id}`,
-        },
-      ],
-    };
-  },
-};
-
-// MCP tool for updating an existing requirement
-export const updateRequirementTool = {
-  schema: updateRequirementSchema,
-  handler: async (params: z.infer<typeof updateRequirementSchema>) => {
-    await initializeStore();
-
-    const { id, updatedBy, ...updates } = params;
-
-    try {
-      const requirement = store.updateRequirement(id, updates, updatedBy);
-      await store.save();
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Requirement ${id} updated successfully`,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${(error as Error).message}`,
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(requirement, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error creating requirement: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
-  },
-};
+  );
 
-// MCP tool for listing all requirements
-export const listRequirementsTool = {
-  schema: listRequirementsSchema,
-  handler: async (params: z.infer<typeof listRequirementsSchema>) => {
-    await initializeStore();
+  // Update an existing requirement
+  server.tool(
+    "update-requirement",
+    {
+      id: z.string().uuid(),
+      title: z.string().min(3).max(100).optional(),
+      description: z.string().min(5).optional(),
+      type: z
+        .enum([
+          RequirementType.FUNCTIONAL,
+          RequirementType.NON_FUNCTIONAL,
+          RequirementType.TECHNICAL,
+          RequirementType.USER_STORY,
+        ])
+        .optional(),
+      priority: z
+        .enum([
+          RequirementPriority.LOW,
+          RequirementPriority.MEDIUM,
+          RequirementPriority.HIGH,
+          RequirementPriority.CRITICAL,
+        ])
+        .optional(),
+      status: z
+        .enum([
+          RequirementStatus.DRAFT,
+          RequirementStatus.PROPOSED,
+          RequirementStatus.APPROVED,
+          RequirementStatus.REJECTED,
+          RequirementStatus.IMPLEMENTED,
+          RequirementStatus.VERIFIED,
+        ])
+        .optional(),
+      tags: z.array(z.string()).optional(),
+    },
+    async (params) => {
+      try {
+        const { id, ...updates } = params;
+        const requirement = await updateRequirement(id, updates);
 
-    let requirements = Object.values(store.requirements);
+        if (!requirement) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Requirement with ID ${id} not found`,
+              },
+            ],
+            isError: true,
+          };
+        }
 
-    // Apply filters if provided
-    if (params.category) {
-      requirements = requirements.filter(
-        (req: Requirement) => req.category === params.category
-      );
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(requirement, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error updating requirement: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
+  );
 
-    if (params.status) {
-      requirements = requirements.filter(
-        (req: Requirement) => req.status === params.status
-      );
+  // Delete a requirement
+  server.tool(
+    "delete-requirement",
+    {
+      id: z.string().uuid(),
+    },
+    async ({ id }) => {
+      try {
+        const success = await deleteRequirement(id);
+
+        if (!success) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Requirement with ID ${id} not found`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Requirement with ID ${id} successfully deleted`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error deleting requirement: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
+  );
 
-    if (params.priority) {
-      requirements = requirements.filter(
-        (req: Requirement) => req.priority === params.priority
-      );
+  // Create a new project
+  server.tool(
+    "create-project",
+    {
+      name: z.string().min(3).max(100),
+      description: z.string().min(5),
+    },
+    async ({ name, description }) => {
+      try {
+        const project = await createProject({
+          name,
+          description,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(project, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error creating project: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
+  );
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(requirements, null, 2),
-        },
-      ],
-    };
-  },
-};
+  // Update an existing project
+  server.tool(
+    "update-project",
+    {
+      id: z.string().uuid(),
+      name: z.string().min(3).max(100).optional(),
+      description: z.string().min(5).optional(),
+    },
+    async (params) => {
+      try {
+        const { id, ...updates } = params;
+        const project = await updateProject(id, updates);
 
-// MCP tool for getting a specific requirement by ID
-export const getRequirementTool = {
-  schema: requirementIdSchema,
-  handler: async (params: z.infer<typeof requirementIdSchema>) => {
-    await initializeStore();
+        if (!project) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Project with ID ${id} not found`,
+              },
+            ],
+            isError: true,
+          };
+        }
 
-    const requirement = store.requirements[params.id];
-
-    if (!requirement) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: Requirement with ID ${params.id} not found`,
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(project, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error updating project: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
+  );
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(requirement, null, 2),
-        },
-      ],
-    };
-  },
-};
+  // Delete a project
+  server.tool(
+    "delete-project",
+    {
+      id: z.string().uuid(),
+    },
+    async ({ id }) => {
+      try {
+        const success = await deleteProject(id);
 
-// MCP tool for adding a stakeholder
-export const addStakeholderTool = {
-  schema: stakeholderSchema,
-  handler: async (params: z.infer<typeof stakeholderSchema>) => {
-    await initializeStore();
+        if (!success) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Project with ID ${id} not found`,
+              },
+            ],
+            isError: true,
+          };
+        }
 
-    const stakeholder = store.addStakeholder(params);
-    await store.save();
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Stakeholder created successfully with ID: ${stakeholder.id}`,
-        },
-      ],
-    };
-  },
-};
-
-// MCP tool for adding a project
-export const addProjectTool = {
-  schema: projectSchema,
-  handler: async (params: z.infer<typeof projectSchema>) => {
-    await initializeStore();
-
-    const project = store.addProject(params);
-    await store.save();
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Project created successfully with ID: ${project.id}`,
-        },
-      ],
-    };
-  },
-};
-
-// MCP tool for getting requirement history
-export const getRequirementHistoryTool = {
-  schema: requirementIdSchema,
-  handler: async (params: z.infer<typeof requirementIdSchema>) => {
-    await initializeStore();
-
-    const updates = store.updates.filter(
-      (update: RequirementUpdate) => update.requirementId === params.id
-    );
-
-    if (updates.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `No history found for requirement with ID ${params.id}`,
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Project with ID ${id} successfully deleted`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error deleting project: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
+  );
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(updates, null, 2),
-        },
-      ],
-    };
-  },
-};
+  // Generate requirement from description
+  server.tool(
+    "generate-requirement",
+    {
+      description: z.string().min(10),
+      projectId: z.string().uuid().optional(),
+    },
+    async ({ description, projectId }) => {
+      try {
+        // Simple heuristic to determine type based on keywords
+        let type = RequirementType.FUNCTIONAL;
+        if (
+          description.toLowerCase().includes("performance") ||
+          description.toLowerCase().includes("security") ||
+          description.toLowerCase().includes("reliability") ||
+          description.toLowerCase().includes("scalability")
+        ) {
+          type = RequirementType.NON_FUNCTIONAL;
+        } else if (
+          description.toLowerCase().includes("technology") ||
+          description.toLowerCase().includes("database") ||
+          description.toLowerCase().includes("architecture")
+        ) {
+          type = RequirementType.TECHNICAL;
+        } else if (
+          description.toLowerCase().includes("as a user") ||
+          description.toLowerCase().includes("i want") ||
+          description.toLowerCase().includes("so that")
+        ) {
+          type = RequirementType.USER_STORY;
+        }
+
+        // Extract relevant tags
+        const potentialTags = [
+          "security",
+          "performance",
+          "usability",
+          "frontend",
+          "backend",
+          "database",
+          "api",
+          "authentication",
+          "ui",
+          "ux",
+          "mobile",
+          "desktop",
+          "web",
+          "testing",
+          "documentation",
+        ];
+
+        const tags = potentialTags.filter((tag) =>
+          description.toLowerCase().includes(tag.toLowerCase())
+        );
+
+        const title = description.split(".")[0].substring(0, 100);
+
+        const requirement = await createRequirement({
+          title,
+          description,
+          type,
+          priority: RequirementPriority.MEDIUM,
+          tags,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(requirement, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error generating requirement: ${error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+}
