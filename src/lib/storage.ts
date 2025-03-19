@@ -208,6 +208,14 @@ async function deleteProject(id: string): Promise<boolean> {
     return false;
   }
 
+  // Delete all requirements associated with this project
+  const requirements = await getRequirements();
+  const updatedRequirements = requirements.filter(
+    (req) => req.projectId !== id
+  );
+  await saveRequirements(updatedRequirements);
+
+  // Delete the project
   projects.splice(index, 1);
   await saveProjects(projects);
 

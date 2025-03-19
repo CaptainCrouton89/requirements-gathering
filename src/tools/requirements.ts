@@ -10,7 +10,7 @@ import {
   getRequirementsByProject,
   updateProject,
   updateRequirement,
-} from "../lib/storage.js";
+} from "../lib/storage-factory.js";
 import {
   RequirementPriority,
   RequirementStatus,
@@ -446,7 +446,7 @@ export function registerRequirementsTools(server: McpServer) {
   // Delete a project
   server.tool(
     "delete-project",
-    "This tool is used to delete an existing project.",
+    "This tool is used to delete an existing project along with all its associated requirements. This operation cannot be undone.",
     {
       id: z.string().uuid(),
     },
@@ -470,7 +470,7 @@ export function registerRequirementsTools(server: McpServer) {
           content: [
             {
               type: "text",
-              text: `Project with ID ${id} successfully deleted`,
+              text: `Project with ID ${id} and all its requirements successfully deleted`,
             },
           ],
         };
