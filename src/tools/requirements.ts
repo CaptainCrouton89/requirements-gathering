@@ -10,7 +10,7 @@ import {
   getRequirementsByProject,
   updateProject,
   updateRequirement,
-} from "../lib/storage-factory.js";
+} from "../lib/sqlite-storage.js";
 import {
   RequirementPriority,
   RequirementStatus,

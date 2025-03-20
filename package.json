@@ -4,14 +4,9 @@
   "description": "An MCP server for gathering and managing project requirements",
   "main": "dist/index.js",
   "type": "module",
-  "bin": {
-    "mcp-embedding-storage": "./dist/index.js",
-    "migrate-to-sqlite": "./dist/tools/migrate-to-sqlite.js"
-  },
   "scripts": {
-    "build": "tsc && chmod 755 dist/index.js && chmod 755 dist/tools/migrate-to-sqlite.js",
+    "build": "tsc && chmod 755 dist/index.js",
     "start": "node dist/index.js",
-    "migrate": "node dist/tools/migrate-to-sqlite.js",
     "drizzle:generate": "drizzle-kit generate:sqlite",
     "drizzle:push": "drizzle-kit push:sqlite",
     "rebuild": "pnpm rebuild better-sqlite3"

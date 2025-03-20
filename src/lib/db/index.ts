@@ -1,16 +1,10 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import fs from "fs/promises";
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
+import path from "path";
 
-// Get the directory name
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Define database path - use the same directory as the JSON files
-const DATA_DIR = process.env.DATA_DIR || "/Users/silasrhyneer/AI/requirements";
+// Define database path - use the same directory as the JSON file
+const DATA_DIR = process.env.DATA_DIR || "/Users/silasrhyneer/AI/db";
 const DB_PATH = path.join(DATA_DIR, "requirements.db");
 
 // Ensure data directory exists
@@ -43,26 +37,6 @@ export async function initializeDatabase() {
 
     // Create drizzle instance
     db = drizzle(sqlite);
-
-    // Ensure migrations directory exists
-    const migrationsDir = path.join(__dirname, "migrations");
-    try {
-      await fs.access(migrationsDir);
-    } catch {
-      // Create migrations directory if it doesn't exist
-      await fs.mkdir(migrationsDir, { recursive: true });
-    }
-
-    // Run migrations if available
-    try {
-      migrate(db, { migrationsFolder: migrationsDir });
-      console.log("Database migrations completed successfully");
-    } catch (error) {
-      console.warn("No migrations found or error running migrations:", error);
-      // For now, we'll rely on the schema being created when we first use it
-    }
-
-    console.log("Database initialized successfully");
     return db;
   } catch (error) {
     console.error("Error initializing database:", error);

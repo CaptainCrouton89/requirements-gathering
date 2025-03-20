@@ -2,7 +2,7 @@ import {
   McpServer,
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getProjects, getRequirements } from "../lib/storage-factory.js";
+import { getProjects, getRequirements } from "../lib/sqlite-storage.js";
 
 /**
  * Register all requirements-related resources with the MCP server

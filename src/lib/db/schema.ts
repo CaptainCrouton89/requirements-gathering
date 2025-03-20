@@ -44,9 +44,5 @@ export const requirementTags = sqliteTable(
       .references(() => requirements.id, { onDelete: "cascade" }),
     tag: text("tag").notNull(),
   },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.requirementId, table.tag] }),
-    };
-  }
+  (table) => [primaryKey({ columns: [table.requirementId, table.tag] })]
 );
